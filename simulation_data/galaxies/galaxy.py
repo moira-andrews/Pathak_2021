@@ -168,7 +168,7 @@ def download_data(id,redshift):
     if Path(new_saved_filename).is_file():
         pass
     else:
-        params = {'stars':'ParticleIDs,Coordinates,GFM_StellarFormationTime,GFM_InitialMass,GFM_Metallicity,BirthPos,BirthVel,GFM_StellarPhotometrics,Masses'}
+        params = None#{'stars':'ParticleIDs,Coordinates,GFM_StellarFormationTime,GFM_InitialMass,GFM_Metallicity,BirthPos,BirthVel,GFM_StellarPhotometrics,Masses'}
         print("Downloading " + url)
         saved_filename = get(url + "/cutout.hdf5",params) # get and save HDF5 cutout file
         os.rename(saved_filename,new_saved_filename)
