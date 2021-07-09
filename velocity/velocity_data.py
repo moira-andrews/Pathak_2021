@@ -13,14 +13,13 @@ baseUrl = 'http://www.tng-project.org/api/'
 headers = {"api-key":"47e1054245932c83855ab4b7af6a7df9"}
 
 
-
-redshift = 2
-scale_factor = 1.0 / (1+redshift)
-little_h = 0.6774
-solar_Z = 0.0127
-url = "http://www.tng-project.org/api/TNG100-1/snapshots/z=" + str(redshift) + "/subhalos/" + str(id)
-
 def particle_type(matter,id):
+    
+    redshift = 2
+    scale_factor = 1.0 / (1+redshift)
+    little_h = 0.6774
+    url = "http://www.tng-project.org/api/TNG100-1/snapshots/z=" + str(redshift) + "/subhalos/" + str(id)
+
 
     if matter == "gas":
         part_type = 'PartType0'
@@ -58,7 +57,7 @@ def particle_type(matter,id):
     params = {'DM':'Coordinates,SubfindHsml'}
         
         
-    with h5py.File(saved_filename,'r') as f:
+    with h5py.File(new_saved_filename,'r') as f:
         # NOTE! If the subhalo is near the edge of the box, you must take the 
         # periodic boundary into account! (we ignore it here)
         num = f['PartType1']['SubfindHsml'][:]
@@ -82,12 +81,17 @@ def particle_type(matter,id):
     
     
 def find_circ_vel(id):
+    
+    redshift = 2
+    scale_factor = 1.0 / (1+redshift)
+    little_h = 0.6774
+    url = "http://www.tng-project.org/api/TNG100-1/snapshots/z=" + str(redshift) + "/subhalos/" + str(id)
+    
     g = 'gas'
     stars = 'stars'
 
-    mass_gas,r_gas = particle_type(g,id)
-    mass_stars,r_stars = particle_type(stars,id)
-    mass_dm = dm_mass() 
+    mass_dm,mass_gas,r_gas = particle_type(g,id)
+    mass_dm,mass_stars,r_stars = particle_type(stars,id) 
     
     r = (r_gas[1:]+r_gas[:-1])/2
 
@@ -106,6 +110,13 @@ def find_circ_vel(id):
 
 
 def star_pos_vel(id):
+    
+    redshift = 2
+    scale_factor = 1.0 / (1+redshift)
+    little_h = 0.6774
+    url = "http://www.tng-project.org/api/TNG100-1/snapshots/z=" + str(redshift) + "/subhalos/" + str(id)
+    
+    
     params = {'stars':'Coordinates,Velocities,GFM_StellarFormationTime'}
 
     sub = get(url)
@@ -132,14 +143,18 @@ def star_pos_vel(id):
         select = np.where(formation_time > 0)[0]
         
         pos = np.array((dx,dy,dz)).T
-        print(np.shape(pos))
         
         vel = np.array((vx,vy,vz)).T
-        print(np.shape(vel))
         
     return(pos[select,:],vel[select,:],star_masses[select])
 
 def rotational_data(id):
+    
+    redshift = 2
+    scale_factor = 1.0 / (1+redshift)
+    little_h = 0.6774
+    url = "http://www.tng-project.org/api/TNG100-1/snapshots/z=" + str(redshift) + "/subhalos/" + str(id)
+    
     r,vel_circ = find_circ_vel(id)
     
     pos,vel_raw,star_masses = star_pos_vel(id)
@@ -176,6 +191,11 @@ def rotational_data(id):
     e_v = v_phi/new_v_circ
     below = np.where(e_v < 0)[0]
     mass_below = sum(mass[below])
+    mass_num = 2*mass_below/sum(mass)
+    
     bins = np.linspace(-1.5,1.5,500)
     
-    return r,vel_circ,e_v,bins,mass_below
+    v_r_binned,r_test,x = stats.binned_statistic(radius,v_r,statistic='mean',bins=np.linspace(0,30,1000))
+    r_binned = (r_test[1:]+r_test[:-1])/2
+    
+    return r,vel_circ,v_r_binned,e_v,bins,mass_num[0]
