@@ -15,6 +15,9 @@ headers = {"api-key":"47e1054245932c83855ab4b7af6a7df9"}
 
 def particle_type(matter,id):
     
+    
+    
+    
     redshift = 2
     scale_factor = 1.0 / (1+redshift)
     little_h = 0.6774
@@ -40,16 +43,20 @@ def particle_type(matter,id):
     with h5py.File(new_saved_filename,'r') as f:
         # NOTE! If the subhalo is near the edge of the box, you must take the 
         # periodic boundary into account! (we ignore it here)
-        dx = f[part_type]['Coordinates'][:,0] - sub['pos_x']
-        dy = f[part_type]['Coordinates'][:,1] - sub['pos_y']
-        dz = f[part_type]['Coordinates'][:,2] - sub['pos_z']
-        masses = f[part_type]['Masses'][:]*(10**10 / 0.6774)
+        if(part_type == 'PartType0') and sub['mass_gas'] == 0:
+            mass = np.zeros(999)
+        elif(part_type == 'PartType4') and sub['mass_stars'] == 0:
+            mass = np.zeros(999)
+        else:
+            dx = f[part_type]['Coordinates'][:,0] - sub['pos_x']
+            dy = f[part_type]['Coordinates'][:,1] - sub['pos_y']
+            dz = f[part_type]['Coordinates'][:,2] - sub['pos_z']
+            masses = f[part_type]['Masses'][:]*(10**10 / 0.6774)
+            rr = np.sqrt(dx**2 + dy**2 + dz**2)
+            rr *= scale_factor/little_h # ckpc/h -> physical kpc
 
-        rr = np.sqrt(dx**2 + dy**2 + dz**2)
-        rr *= scale_factor/little_h # ckpc/h -> physical kpc
-        
-        mass,bin_edge,num = stats.binned_statistic(rr,masses,statistic='sum',bins=np.linspace(0,30,1000))
-        
+            mass,bin_edge,num = stats.binned_statistic(rr,masses,statistic='sum',bins=np.linspace(0,30,1000))
+
         f.close()
         
         
@@ -194,4 +201,8 @@ def rotational_data(id):
     mass_num = 2*mass_below/sum(mass)
     
     bins = np.linspace(-1.5,1.5,500)
-    return r,vel_circ,e_v,bins,mass_num[0]
+    
+    v_r_binned,r_test,x = stats.binned_statistic(radius,v_r,statistic='mean',bins=np.linspace(0,30,1000))
+    r_binned = (r_test[1:]+r_test[:-1])/2
+    
+    return r,vel_circ,v_r_binned,e_v,bins,mass_num[0]
