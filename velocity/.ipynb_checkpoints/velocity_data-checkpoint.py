@@ -193,10 +193,10 @@ def rotational_data(id):
     velocity = np.sqrt((vel[:,0]*vel[:,0] + vel[:,1]*vel[:,1] + vel[:,2]*vel[:,2]))
     
     
-    radius = np.sqrt((rad[:,0]*rad[:,0] + rad[:,1]*rad[:,1] + rad[:,2]*rad[:,2]))
+    radius_new = np.sqrt((rad[:,0]*rad[:,0] + rad[:,1]*rad[:,1] + rad[:,2]*rad[:,2]))
     
     f = interpolate.interp1d(r, vel_circ,bounds_error = False,fill_value = 'extrapolate')
-    new_v_circ = f(radius)
+    new_v_circ = f(radius_new)
     
     e_v = v_phi/new_v_circ
     below = np.where(e_v < 0)[0]
@@ -205,7 +205,7 @@ def rotational_data(id):
     
     bins = np.linspace(-1.5,1.5,500)
     
-    v_r_binned,r_test,x = stats.binned_statistic(radius,v_r,statistic='mean',bins=np.linspace(0,30,50))
+    v_r_binned,r_test,x = stats.binned_statistic(radius_new,v_r,statistic='mean',bins=np.linspace(0,30,50))
     r_binned = (r_test[1:]+r_test[:-1])/2
 
-    return r,vel_circ,v_r_binned,r_binned,e_v,bins,mass_num[0],velocity,radius
+    return r,vel_circ,v_r_binned,r_binned,e_v,bins,mass_num[0],velocity,radius_new,v_phi
