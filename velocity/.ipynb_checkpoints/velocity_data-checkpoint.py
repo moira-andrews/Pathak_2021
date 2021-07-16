@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
 import requests
 from scipy import stats
 import h5py
@@ -8,6 +5,8 @@ import numpy as np
 from velocity import get
 import os
 from scipy import interpolate
+import pathlib
+from simulation_data.galaxies import GalaxyPopulation
 
 baseUrl = 'http://www.tng-project.org/api/'
 headers = {"api-key":"47e1054245932c83855ab4b7af6a7df9"}
@@ -156,7 +155,7 @@ def star_pos_vel(id):
         
     return(pos[select,:],vel[select,:],star_masses[select])
 
-def rotational_data(id):
+def rotational_data(id,string):
     
     redshift = 2
     scale_factor = 1.0 / (1+redshift)
@@ -209,61 +208,98 @@ def rotational_data(id):
     v_r_binned,r_test,x = stats.binned_statistic(radius_new,v_r,statistic='mean',bins=np.linspace(0,30,50))
     r_binned = (r_test[1:]+r_test[:-1])/2
     
-    lam = np.mean(e_v)
+    lam = np.mean(e_v) 
+    
+    if str(string) == "lam":
+        return lam
+    if str(string) == "bulge_ratio":
+        return mass_num[0]
+    
+    if str(string) == "":
+        return r,vel_circ,v_r_binned,r_binned,e_v,bins,mass_num[0],v_j,radius_new,v_phi
     
 
 
+def calc_lambda(ids):
+    total_mass = np.zeros(len(ids))
+    lambda_calc = np.zeros(len(ids))
+    for i, id in enumerate(ids):
+        lambda_calc[i] = rotational_data(id,'lam')
+        print(str(i) + '/' + str(len(ids)))
+    np.savetxt('z=2_Lambda', lambda_calc)
+    lam = np.loadtxt('z=2_Lambda', dtype=float)
+    return lam
 
-    return lam,mass_num[0]
 
-
-def starforming(ids,total_mass,selection):
-    rand_id = np.random.choice(ids[selection], 80, replace=False)
-    rotate = []
-    bulge = []
-
-    for i in range(len(rand_id)):
+def get_lambda(ids):
+        '''
+        input params: 
+            [none]
+        preconditions:
+            requires initialization with self.select_galaxies(redshift=redshift, mass_min=10.5, mass_max=12)
+            requires self.calc_median_stellar_age()
+        output params:
+            checks if array of median stellar age exists in temporary text file.
+                if temporary text file does not exist, calculates median stellar age using self.calc_median_stellar_age()
+                if temporary file exists, reads array from temporary file
+            returns median stellar age: an array of median stellar ages of galaxies in selection 
+                    [units: Lookback time in Gyr] 
+        '''
+        file = pathlib.Path('z=2_Lambda')
+        if file.exists ():
+            lam = np.loadtxt('z=2_Lambda', dtype=float) 
+            return lam
+        else:
+            return calc_lambda(ids)
         
-        id = rand_id[i]
-        lam,mass_num = rotational_data(id)
-        rotate.append(lam)
-        bulge.append(mass_num)
-    
-    lambda_vals = np.array(rotate)
-    bulge_vals = np.array(bulge)
-    
-    return lambda_vals,bulge_vals
+def calc_bulge_ratio(ids):
+    total_mass = np.zeros(len(ids))
+    ratio_calc = np.zeros(len(ids))
+    for i, id in enumerate(ids):
+        ratio_calc[i] = rotational_data(id,'bulge_ratio')
+    np.savetxt('z=2_Ratio', ratio_calc)
+    ratio = np.loadtxt('z=2_Ratio', dtype=float)
+    return ratio
 
-def old(ids,total_mass,selection):
-    rand_id = ids[selection]
-    rotate = []
-    bulge = []
 
-    for i in range(len(rand_id)):
+def get_bulge_ratio(ids):
+        '''
+        input params: 
+            [none]
+        preconditions:
+            requires initialization with self.select_galaxies(redshift=redshift, mass_min=10.5, mass_max=12)
+            requires self.calc_median_stellar_age()
+        output params:
+            checks if array of median stellar age exists in temporary text file.
+                if temporary text file does not exist, calculates median stellar age using self.calc_median_stellar_age()
+                if temporary file exists, reads array from temporary file
+            returns median stellar age: an array of median stellar ages of galaxies in selection 
+                    [units: Lookback time in Gyr] 
+        '''
+        file = pathlib.Path('z=2_Ratio')
+        if file.exists ():
+            ratio = np.loadtxt('z=2_Ratio', dtype=float) 
+            return ratio
+        else:
+            return calc_bulge_ratio(ids)
         
-        id = rand_id[i]
-        lam,mass_num = rotational_data(id)
-        rotate.append(lam)
-        bulge.append(mass_num)
-    
-    lambda_vals = np.array(rotate)
-    bulge_vals = np.array(bulge)
-    
-    return lambda_vals,bulge_vals
 
-def young(ids,total_mass,selection):
-    rand_id = ids[selection]
-    rotate = []
-    bulge = []
-
-    for i in range(len(rand_id)):
         
-        id = rand_id[i]
-        lam,mass_num = rotational_data(id)
-        rotate.append(lam)
-        bulge.append(mass_num)
+        
+#use to download the lambda and bulge_ratio values
+#change to lambda functions and keys to download
+def data_download():
     
-    lambda_vals = np.array(rotate)
-    bulge_vals = np.array(bulge)
+    my_galaxy_population = GalaxyPopulation()
     
-    return lambda_vals,bulge_vals
+    with h5py.File('galaxy_population_data_'+str(2)+'.hdf5', 'r') as f:
+        ids = f['ids'][:]
+        median_age = f['median_age'][:]
+        halfmass_radius = f['halfmass_radius'][:]
+        total_mass = f['total_mass'][:]
+        newbin_current_SFR = f['newbin_current_SFR'][:]
+        maximum_merger_ratio_30kpc_current_fraction = f['maximum_merger_ratio_30kpc_current_fraction'][:]
+        
+    with h5py.File('galaxy_population_data_'+str(2)+'.hdf5', 'a') as f:
+        #writing data
+        d11 = f.create_dataset('bulge_ratio', data = get_bulge_ratio(ids))
