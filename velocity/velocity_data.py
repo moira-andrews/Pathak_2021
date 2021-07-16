@@ -35,6 +35,7 @@ def particle_type(matter,id):
     sub = get(url)
     
     new_saved_filename = os.path.join('redshift_'+str(redshift)+'_data', 'cutout_'+str(id)+'_redshift_'+str(redshift)+'_rawdata.hdf5')
+    
     if not os.path.exists(new_saved_filename):
         new_saved_filename = get(url+"/cutout.hdf5")
     
@@ -207,5 +208,62 @@ def rotational_data(id):
     
     v_r_binned,r_test,x = stats.binned_statistic(radius_new,v_r,statistic='mean',bins=np.linspace(0,30,50))
     r_binned = (r_test[1:]+r_test[:-1])/2
+    
+    lam = np.mean(e_v)
+    
 
-    return r,vel_circ,v_r_binned,r_binned,e_v,bins,mass_num[0],velocity,radius_new,v_phi
+
+
+    return lam,mass_num[0]
+
+
+def starforming(ids,total_mass,selection):
+    rand_id = np.random.choice(ids[selection], 80, replace=False)
+    rotate = []
+    bulge = []
+    print(rand_id)
+    for i in range(len(rand_id)):
+        
+        id = rand_id[i]
+        lam,mass_num = rotational_data(id)
+        rotate.append(lam)
+        bulge.append(mass_num)
+    
+    lambda_vals = np.array(rotate)
+    bulge_vals = np.array(bulge)
+    
+    return lambda_vals,bulge_vals
+
+def old(ids,total_mass,selection):
+    rand_id = ids[selection]
+    rotate = []
+    bulge = []
+    print(rand_id)
+    for i in range(len(rand_id)):
+        
+        id = rand_id[i]
+        lam,mass_num = rotational_data(id)
+        rotate.append(lam)
+        bulge.append(mass_num)
+    
+    lambda_vals = np.array(rotate)
+    bulge_vals = np.array(bulge)
+    
+    return lambda_vals,bulge_vals
+
+def young(ids,total_mass,selection):
+    rand_id = ids[selection]
+    rotate = []
+    bulge = []
+    print(rand_id)
+    for i in range(len(rand_id)):
+        
+        id = rand_id[i]
+        lam,mass_num = rotational_data(id)
+        rotate.append(lam)
+        bulge.append(mass_num)
+    
+    lambda_vals = np.array(rotate)
+    bulge_vals = np.array(bulge)
+    
+    return lambda_vals,bulge_vals
