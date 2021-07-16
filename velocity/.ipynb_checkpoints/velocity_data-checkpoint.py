@@ -221,7 +221,7 @@ def starforming(ids,total_mass,selection):
     rand_id = np.random.choice(ids[selection], 80, replace=False)
     rotate = []
     bulge = []
-    print(rand_id)
+
     for i in range(len(rand_id)):
         
         id = rand_id[i]
@@ -238,7 +238,7 @@ def old(ids,total_mass,selection):
     rand_id = ids[selection]
     rotate = []
     bulge = []
-    print(rand_id)
+
     for i in range(len(rand_id)):
         
         id = rand_id[i]
@@ -255,7 +255,7 @@ def young(ids,total_mass,selection):
     rand_id = ids[selection]
     rotate = []
     bulge = []
-    print(rand_id)
+
     for i in range(len(rand_id)):
         
         id = rand_id[i]
