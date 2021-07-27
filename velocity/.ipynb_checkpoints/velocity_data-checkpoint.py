@@ -7,6 +7,7 @@ import os
 from scipy import interpolate
 import pathlib
 from simulation_data.galaxies import GalaxyPopulation
+import scipy.linalg as la
 
 baseUrl = 'http://www.tng-project.org/api/'
 headers = {"api-key":"47e1054245932c83855ab4b7af6a7df9"}
@@ -138,7 +139,10 @@ def star_pos_vel(id):
         dx = (f['PartType4']['Coordinates'][:,0] - sub['pos_x'])*scale_factor
         dy = (f['PartType4']['Coordinates'][:,1] - sub['pos_y'])*scale_factor
         dz = (f['PartType4']['Coordinates'][:,2] - sub['pos_z'])*scale_factor
-
+        
+        dx_c = f['PartType4']['Coordinates'][:,0]
+        dy_c = f['PartType4']['Coordinates'][:,1]
+        
         vx = f['PartType4']['Velocities'][:,0]*np.sqrt(scale_factor) - sub['vel_x']
         vy = f['PartType4']['Velocities'][:,1]*np.sqrt(scale_factor) - sub['vel_y']
         vz = f['PartType4']['Velocities'][:,2]*np.sqrt(scale_factor) - sub['vel_z']
@@ -151,9 +155,11 @@ def star_pos_vel(id):
         
         pos = np.array((dx,dy,dz)).T
         
+        cor_pos = np.array((dx_c,dy_c)).T
+        
         vel = np.array((vx,vy,vz)).T
         
-    return(pos[select,:],vel[select,:],star_masses[select])
+    return(pos[select,:],vel[select,:],star_masses[select],cor_pos[select,:])
 
 def rotational_data(id,string):
     
@@ -164,7 +170,7 @@ def rotational_data(id,string):
     
     r,vel_circ = find_circ_vel(id)
     
-    pos,vel_raw,star_masses = star_pos_vel(id)
+    pos,vel_raw,star_masses,cor_pos = star_pos_vel(id)
     
     radius = np.sqrt(pos[:,0]**2 + pos[:,1]**2 + pos[:,2]**2)
     stars_select = np.where(radius < 30)[0]
@@ -208,12 +214,26 @@ def rotational_data(id,string):
     v_r_binned,r_test,x = stats.binned_statistic(radius_new,v_r,statistic='mean',bins=np.linspace(0,30,50))
     r_binned = (r_test[1:]+r_test[:-1])/2
     
-    lam = np.mean(e_v) 
+    lam_mean = np.mean(e_v) 
+    
+    #observed lambda
+    
+    n_z = np.array((0,0,1))
+    
+    lambda_obs = lam_mean * np.sqrt(1-np.dot(n_j, n_z)**2)
+    
+    cov  = np.cov(cor_pos.T)
+    w, v = la.eig(cov)
+    minor = np.min(np.float32(w))
+    major = np.max(np.float32(w))
+    ellipticity = 1.0-minor/major
     
     if str(string) == "lam":
-        return lam
+        return lam_mean
     if str(string) == "bulge_ratio":
         return mass_num[0]
+    if str(string) == "ellipticity":
+        return ellipticity
     
     if str(string) == "":
         return r,vel_circ,v_r_binned,r_binned,e_v,bins,mass_num[0],v_j,radius_new,v_phi
@@ -232,19 +252,6 @@ def calc_lambda(ids):
 
 
 def get_lambda(ids):
-        '''
-        input params: 
-            [none]
-        preconditions:
-            requires initialization with self.select_galaxies(redshift=redshift, mass_min=10.5, mass_max=12)
-            requires self.calc_median_stellar_age()
-        output params:
-            checks if array of median stellar age exists in temporary text file.
-                if temporary text file does not exist, calculates median stellar age using self.calc_median_stellar_age()
-                if temporary file exists, reads array from temporary file
-            returns median stellar age: an array of median stellar ages of galaxies in selection 
-                    [units: Lookback time in Gyr] 
-        '''
         file = pathlib.Path('z=2_Lambda')
         if file.exists ():
             lam = np.loadtxt('z=2_Lambda', dtype=float) 
@@ -263,27 +270,31 @@ def calc_bulge_ratio(ids):
 
 
 def get_bulge_ratio(ids):
-        '''
-        input params: 
-            [none]
-        preconditions:
-            requires initialization with self.select_galaxies(redshift=redshift, mass_min=10.5, mass_max=12)
-            requires self.calc_median_stellar_age()
-        output params:
-            checks if array of median stellar age exists in temporary text file.
-                if temporary text file does not exist, calculates median stellar age using self.calc_median_stellar_age()
-                if temporary file exists, reads array from temporary file
-            returns median stellar age: an array of median stellar ages of galaxies in selection 
-                    [units: Lookback time in Gyr] 
-        '''
         file = pathlib.Path('z=2_Ratio')
         if file.exists ():
             ratio = np.loadtxt('z=2_Ratio', dtype=float) 
             return ratio
         else:
             return calc_bulge_ratio(ids)
-        
 
+def calc_ellipticity(ids):
+    total_mass = np.zeros(len(ids))
+    ellipticity_calc = np.zeros(len(ids))
+    for i, id in enumerate(ids):
+        ellipticity_calc[i] = rotational_data(id,'ellipticity')
+        print("ID = " + str(id), "Ellipticity: " + str(ellipticity_calc[i]))
+    np.savetxt('z=2_Elliptivity', ellipticity_calc)
+    elliptiticy = np.loadtxt('z=2_Ellipticity', dtype=float)
+    return ellipticity
+    
+    
+def get_ellipticity(ids):
+    file = pathlib.Path('z=2_Ellipticity')
+    if file.exists ():
+        ratio = np.loadtxt('z=2_Ellipticity', dtype=float) 
+        return ratio
+    else:
+        return calc_ellipticity(ids)
         
         
 #use to download the lambda and bulge_ratio values
