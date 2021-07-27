@@ -283,8 +283,8 @@ def calc_ellipticity(ids):
     for i, id in enumerate(ids):
         ellipticity_calc[i] = rotational_data(id,'ellipticity')
         print("ID = " + str(id), "Ellipticity: " + str(ellipticity_calc[i]))
-    np.savetxt('z=2_Elliptivity', ellipticity_calc)
-    elliptiticy = np.loadtxt('z=2_Ellipticity', dtype=float)
+    np.savetxt('z=2_Ellipticity', ellipticity_calc)
+    ellipticity = np.loadtxt('z=2_Ellipticity', dtype=float)
     return ellipticity
     
     
