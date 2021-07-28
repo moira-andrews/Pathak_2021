@@ -234,6 +234,8 @@ def rotational_data(id,string):
         return mass_num[0]
     if str(string) == "ellipticity":
         return ellipticity
+    if str(string) == "lam_obs":
+        return lambda_obs
     
     if str(string) == "":
         return r,vel_circ,v_r_binned,r_binned,e_v,bins,mass_num[0],v_j,radius_new,v_phi
@@ -264,6 +266,7 @@ def calc_bulge_ratio(ids):
     ratio_calc = np.zeros(len(ids))
     for i, id in enumerate(ids):
         ratio_calc[i] = rotational_data(id,'bulge_ratio')
+        print(str(i) + '/' + str(len(ids)))
     np.savetxt('z=2_Ratio', ratio_calc)
     ratio = np.loadtxt('z=2_Ratio', dtype=float)
     return ratio
@@ -282,6 +285,7 @@ def calc_ellipticity(ids):
     ellipticity_calc = np.zeros(len(ids))
     for i, id in enumerate(ids):
         ellipticity_calc[i] = rotational_data(id,'ellipticity')
+        print(str(i) + '/' + str(len(ids)))
         print("ID = " + str(id), "Ellipticity: " + str(ellipticity_calc[i]))
     np.savetxt('z=2_Ellipticity', ellipticity_calc)
     ellipticity = np.loadtxt('z=2_Ellipticity', dtype=float)
@@ -295,6 +299,26 @@ def get_ellipticity(ids):
         return ratio
     else:
         return calc_ellipticity(ids)
+    
+def calc_lam_obs(ids):
+    total_mass = np.zeros(len(ids))
+    lam_obs_calc = np.zeros(len(ids))
+    for i, id in enumerate(ids):
+        lam_obs_calc[i] = rotational_data(id,'lam_obs')
+        print(str(i) + '/' + str(len(ids)))
+        print("ID = " + str(id), "Lambda Observed: " + str(lam_obs_calc[i]))
+    np.savetxt('z=2_Lambda_Obs', lam_obs_calc)
+    lambda_obs = np.loadtxt('z=2_Lambda_Obs', dtype=float)
+    return lambda_obs
+    
+    
+def get_lam_obs(ids):
+    file = pathlib.Path('z=2_Lambda_Obs')
+    if file.exists ():
+        lam_obs = np.loadtxt('z=2_Lambda_Obs', dtype=float) 
+        return lab_obs
+    else:
+        return calc_lam_obs(ids)
         
         
 #use to download the lambda and bulge_ratio values
