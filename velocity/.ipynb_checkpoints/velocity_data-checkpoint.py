@@ -40,6 +40,9 @@ def particle_type(matter,id):
         new_saved_filename = get(url+"/cutout.hdf5")
     
     
+    effec_r = sub['halfmassrad_stars']*scale_factor
+    
+    
     
     with h5py.File(new_saved_filename,'r') as f:
         # NOTE! If the subhalo is near the edge of the box, you must take the 
@@ -55,8 +58,10 @@ def particle_type(matter,id):
             masses = f[part_type]['Masses'][:]*(10**10 / 0.6774)
             rr = np.sqrt(dx**2 + dy**2 + dz**2)
             rr *= scale_factor/little_h # ckpc/h -> physical kpc
-
-            mass,bin_edge,num = stats.binned_statistic(rr,masses,statistic='sum',bins=np.linspace(0,30,1000))
+            
+            r = np.where(rr < effec_r)
+            
+            mass,bin_edge,num = stats.binned_statistic(rr[r],masses,statistic='sum',bins=np.linspace(0,effec_r,1000))
 
         f.close()
         
@@ -76,8 +81,10 @@ def particle_type(matter,id):
 
         rr = np.sqrt(dx**2 + dy**2 + dz**2)
         rr *= scale_factor/little_h # ckpc/h -> physical kpc
-
-        num_dm,bin_edge,x = stats.binned_statistic(rr,num,statistic='sum',bins=np.linspace(0,30,1000))
+        
+        r = np.where(rr < effec_r)
+        
+        num_dm,bin_edge,x = stats.binned_statistic(rr[r],num,statistic='sum',bins=np.linspace(0,effec_r,1000))
         f.close()
         
         mass_dm_tot = 0.45*10**6
@@ -167,13 +174,16 @@ def rotational_data(id,string):
     scale_factor = 1.0 / (1+redshift)
     little_h = 0.6774
     url = "http://www.tng-project.org/api/TNG100-1/snapshots/z=" + str(redshift) + "/subhalos/" + str(id)
+    sub = get(url)
+    effec_r = sub['halfmassrad_stars']*scale_factor
     
+    print(effec_r)
     r,vel_circ = find_circ_vel(id)
     
     pos,vel_raw,star_masses,cor_pos = star_pos_vel(id)
     
     radius = np.sqrt(pos[:,0]**2 + pos[:,1]**2 + pos[:,2]**2)
-    stars_select = np.where(radius < 30)[0]
+    stars_select = np.where(radius < effec_r)[0]
     vel = np.array((vel_raw[stars_select, 0], vel_raw[stars_select, 1], vel_raw[stars_select, 2])).T
     rad = np.array((pos[stars_select, 0], pos[stars_select, 1], pos[stars_select, 2])).T
     mass = np.array((star_masses[stars_select],star_masses[stars_select],star_masses[stars_select])).T
@@ -211,7 +221,7 @@ def rotational_data(id,string):
     
     bins = np.linspace(-1.5,1.5,500)
     
-    v_r_binned,r_test,x = stats.binned_statistic(radius_new,v_r,statistic='mean',bins=np.linspace(0,30,50))
+    v_r_binned,r_test,x = stats.binned_statistic(radius_new,v_r,statistic='mean',bins=np.linspace(0,effec_r,50))
     r_binned = (r_test[1:]+r_test[:-1])/2
     
     lam_mean = np.mean(e_v) 

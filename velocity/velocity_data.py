@@ -167,13 +167,16 @@ def rotational_data(id,string):
     scale_factor = 1.0 / (1+redshift)
     little_h = 0.6774
     url = "http://www.tng-project.org/api/TNG100-1/snapshots/z=" + str(redshift) + "/subhalos/" + str(id)
+    sub = get(url)
+    effec_r = sub['halfmassrad_stars']*scale_factor
     
+    print(effec_r)
     r,vel_circ = find_circ_vel(id)
     
     pos,vel_raw,star_masses,cor_pos = star_pos_vel(id)
     
     radius = np.sqrt(pos[:,0]**2 + pos[:,1]**2 + pos[:,2]**2)
-    stars_select = np.where(radius < 30)[0]
+    stars_select = np.where(radius < effec_r)[0]
     vel = np.array((vel_raw[stars_select, 0], vel_raw[stars_select, 1], vel_raw[stars_select, 2])).T
     rad = np.array((pos[stars_select, 0], pos[stars_select, 1], pos[stars_select, 2])).T
     mass = np.array((star_masses[stars_select],star_masses[stars_select],star_masses[stars_select])).T
