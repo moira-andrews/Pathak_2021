@@ -16,10 +16,6 @@ headers = {"api-key":"47e1054245932c83855ab4b7af6a7df9"}
 
 
 def particle_type(matter,id):
-    
-    
-    
-    
     redshift = 2
     scale_factor = 1.0 / (1+redshift)
     little_h = 0.6774
@@ -350,13 +346,16 @@ def age_vel_disp(id):
     
     young_ind = np.where(LookbackTime < 1)[0]
     old_ind = np.where(LookbackTime >= 1)[0]
+    tot_ind = np.where(LookbackTime < 5)[0]
     
+    #ages of old and young stars
     young = LookbackTime[young_ind]
     old = LookbackTime[old_ind]
     
     r,vel_circ,v_r_binned,r_binned,e_v,bins,mass_num,vel_disp_young,radius_new,v_phi = rotational_data(id,'',young_ind)
     r,vel_circ,v_r_binned,r_binned,e_v,bins,mass_num,vel_disp_old,radius_new,v_phi = rotational_data(id,'',old_ind)
-    r,vel_circ,v_r_binned,r_binned,e_v,bins,mass_num,vel_disp_tot,radius_new,v_phi = rotational_data(id,'',stars_select)
+    r,vel_circ,v_r_binned,r_binned,e_v,bins,mass_num,vel_disp_tot,radius_new,v_phi = rotational_data(id,'',tot_ind)
+    
     return vel_disp_young,vel_disp_old,vel_disp_tot
     
         
