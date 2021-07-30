@@ -8,6 +8,8 @@ from scipy import interpolate
 import pathlib
 from simulation_data.galaxies import GalaxyPopulation
 import scipy.linalg as la
+from simulation_data.galaxies.galaxy import age_profile, get_star_formation_history, get_galaxy_particle_data, get_stellar_assembly_data
+
 
 baseUrl = 'http://www.tng-project.org/api/'
 headers = {"api-key":"47e1054245932c83855ab4b7af6a7df9"}
@@ -161,7 +163,19 @@ def star_pos_vel(id):
         
     return(pos[select,:],vel[select,:],star_masses[select],cor_pos[select,:])
 
-def rotational_data(id,string):
+def star_selection(id):
+    redshift = 2
+    scale_factor = 1.0 / (1+redshift)
+    little_h = 0.6774
+    url = "http://www.tng-project.org/api/TNG100-1/snapshots/z=" + str(redshift) + "/subhalos/" + str(id)
+    sub = get(url)
+    effec_r = sub['halfmassrad_stars']*scale_factor
+    pos,vel_raw,star_masses,cor_pos = star_pos_vel(id)
+    radius = np.sqrt(pos[:,0]**2 + pos[:,1]**2 + pos[:,2]**2)
+    stars_select = np.where(radius < effec_r)[0]
+    return stars_select
+
+def rotational_data(id,string,stars_select):
     
     redshift = 2
     scale_factor = 1.0 / (1+redshift)
@@ -169,14 +183,13 @@ def rotational_data(id,string):
     url = "http://www.tng-project.org/api/TNG100-1/snapshots/z=" + str(redshift) + "/subhalos/" + str(id)
     sub = get(url)
     effec_r = sub['halfmassrad_stars']*scale_factor
-    
-    print(effec_r)
+
     r,vel_circ = find_circ_vel(id)
     
     pos,vel_raw,star_masses,cor_pos = star_pos_vel(id)
     
     radius = np.sqrt(pos[:,0]**2 + pos[:,1]**2 + pos[:,2]**2)
-    stars_select = np.where(radius < effec_r)[0]
+    
     vel = np.array((vel_raw[stars_select, 0], vel_raw[stars_select, 1], vel_raw[stars_select, 2])).T
     rad = np.array((pos[stars_select, 0], pos[stars_select, 1], pos[stars_select, 2])).T
     mass = np.array((star_masses[stars_select],star_masses[stars_select],star_masses[stars_select])).T
@@ -214,8 +227,10 @@ def rotational_data(id,string):
     
     bins = np.linspace(-1.5,1.5,500)
     
-    v_r_binned,r_test,x = stats.binned_statistic(radius_new,v_r,statistic='mean',bins=np.linspace(0,30,50))
+    v_r_binned,r_test,x = stats.binned_statistic(radius_new,v_r,statistic='mean',bins=np.linspace(0,30,60))
     r_binned = (r_test[1:]+r_test[:-1])/2
+    
+    vel_disp,r_disp,x = stats.binned_statistic(radius_new,v_j,statistic = 'std',bins = np.linspace(0,30,60))
     
     lam_mean = np.mean(e_v) 
     
@@ -241,7 +256,7 @@ def rotational_data(id,string):
         return lambda_obs
     
     if str(string) == "":
-        return r,vel_circ,v_r_binned,r_binned,e_v,bins,mass_num[0],v_j,radius_new,v_phi
+        return r,vel_circ,v_r_binned,r_binned,e_v,bins,mass_num[0],vel_disp,radius_new,v_phi
     
 
 
@@ -249,7 +264,8 @@ def calc_lambda(ids):
     total_mass = np.zeros(len(ids))
     lambda_calc = np.zeros(len(ids))
     for i, id in enumerate(ids):
-        lambda_calc[i] = rotational_data(id,'lam')
+        stars_select = star_selection(id)
+        lambda_calc[i] = rotational_data(id,'lam',stars_select)
         print(str(i) + '/' + str(len(ids)))
     np.savetxt('z=2_Lambda', lambda_calc)
     lam = np.loadtxt('z=2_Lambda', dtype=float)
@@ -268,7 +284,8 @@ def calc_bulge_ratio(ids):
     total_mass = np.zeros(len(ids))
     ratio_calc = np.zeros(len(ids))
     for i, id in enumerate(ids):
-        ratio_calc[i] = rotational_data(id,'bulge_ratio')
+        stars_select = star_selection(id)
+        ratio_calc[i] = rotational_data(id,'bulge_ratio',stars_select)
         print(str(i) + '/' + str(len(ids)))
     np.savetxt('z=2_Ratio', ratio_calc)
     ratio = np.loadtxt('z=2_Ratio', dtype=float)
@@ -287,6 +304,7 @@ def calc_ellipticity(ids):
     total_mass = np.zeros(len(ids))
     ellipticity_calc = np.zeros(len(ids))
     for i, id in enumerate(ids):
+        stars_select = star_selection(id)
         ellipticity_calc[i] = rotational_data(id,'ellipticity')
         print(str(i) + '/' + str(len(ids)))
         print("ID = " + str(id), "Ellipticity: " + str(ellipticity_calc[i]))
@@ -307,7 +325,8 @@ def calc_lam_obs(ids):
     total_mass = np.zeros(len(ids))
     lam_obs_calc = np.zeros(len(ids))
     for i, id in enumerate(ids):
-        lam_obs_calc[i] = rotational_data(id,'lam_obs')
+        stars_select = star_selection(id)
+        lam_obs_calc[i] = rotational_data(id,'lam_obs',stars_select)
         print(str(i) + '/' + str(len(ids)))
         print("ID = " + str(id), "Lambda Observed: " + str(lam_obs_calc[i]))
     np.savetxt('z=2_Lambda_Obs', lam_obs_calc)
@@ -322,6 +341,25 @@ def get_lam_obs(ids):
         return lab_obs
     else:
         return calc_lam_obs(ids)
+        
+        
+def age_vel_disp(id):
+    stars_select = star_selection(id)
+    stellar_data = get_galaxy_particle_data(id=id , redshift=2, populate_dict=True)
+    LookbackTime = stellar_data['LookbackTime']
+    
+    young_ind = np.where(LookbackTime < 1)[0]
+    old_ind = np.where(LookbackTime >= 1)[0]
+    
+    young = LookbackTime[young_ind]
+    old = LookbackTime[old_ind]
+    
+    r,vel_circ,v_r_binned,r_binned,e_v,bins,mass_num,vel_disp_young,radius_new,v_phi = rotational_data(id,'',young_ind)
+    r,vel_circ,v_r_binned,r_binned,e_v,bins,mass_num,vel_disp_old,radius_new,v_phi = rotational_data(id,'',old_ind)
+    r,vel_circ,v_r_binned,r_binned,e_v,bins,mass_num,vel_disp_tot,radius_new,v_phi = rotational_data(id,'',stars_select)
+    return vel_disp_young,vel_disp_old,vel_disp_tot
+    
+        
         
         
 #use to download the lambda and bulge_ratio values
